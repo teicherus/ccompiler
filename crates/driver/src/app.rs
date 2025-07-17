@@ -32,6 +32,12 @@ pub struct CompilerDriver {
 }
 
 impl CompilerDriver {
+    /// Create a new compiler driver.
+    ///
+    /// # Errors
+    ///
+    /// This function will error if finding the absolute path to a given
+    /// source file fails, e.g. when accessing the file system does not work :)
     pub fn new() -> Result<Self, String> {
         let cli = Cli::parse();
 
@@ -62,8 +68,8 @@ impl CompilerDriver {
 
     fn lex_file(&self) -> Result<(), String> {
         println!("Lexing {}", self.filepath.display());
-        let mut lexer = lexer::Lexer::new(self.filepath.clone())?;
-        let _tokens = lexer.lex()?;
+        let mut lexer = lexer::Lexer::new();
+        let _tokens = lexer.lex_file(&self.filepath)?;
 
         // Parsing tokens did not fail, so yayyy
         Ok(())
@@ -71,11 +77,11 @@ impl CompilerDriver {
 
     fn lex_and_parse_file(&self) -> Result<(), String> {
         println!("Lexing and parsing {}", self.filepath.display());
-        let mut lexer = lexer::Lexer::new(self.filepath.clone())?;
+        let mut lexer = lexer::Lexer::new();
         let parser = parser::Parser::new();
 
-        let tokens = lexer.lex()?;
-        let _ast = parser.parse(&tokens)?;
+        let tokens = lexer.lex_file(&self.filepath)?;
+        let _ast = parser.parse(tokens)?;
 
         todo!()
     }

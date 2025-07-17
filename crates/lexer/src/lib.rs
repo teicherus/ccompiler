@@ -8,12 +8,8 @@ use std::{
 pub use token::Token;
 
 pub struct Lexer {
-    reader: BufReader<std::fs::File>,
-    path: PathBuf,
     current_line: String,
     current_line_number: usize,
-    current_pos: usize,
-    chars: Vec<char>,
     tokens: Vec<Token>,
 }
 
@@ -24,21 +20,12 @@ impl Lexer {
     ///
     /// This function will return an error if opening the file failed.
     #[must_use = "Please use me uwu"]
-    pub fn new(path: PathBuf) -> Result<Self, String> {
-        // Creating a filehandle here might be a bad idea because this blocks the file
-        // as long as the Lexer is in scope, even if Lexer::lex() is never called...
-        // PERF: Maybe this should only happen when lexing is actually started.
-        let file_handle = std::fs::File::open(&path).map_err(|err| err.to_string())?;
-        let reader = BufReader::new(file_handle);
-        Ok(Self {
-            path,
-            reader,
+    pub const fn new() -> Self {
+        Self {
             current_line: String::new(),
             current_line_number: 0,
-            current_pos: 0,
-            chars: Vec::new(),
             tokens: Vec::new(),
-        })
+        }
     }
 
     /// Lex a preprocessed C file into a list of tokens.
@@ -47,26 +34,61 @@ impl Lexer {
     ///
     /// This function will return an error if the given input is not a valid preprocessed C
     /// source file.
-    pub fn lex(&mut self) -> Result<Vec<Token>, String> {
+    pub fn lex_file(&mut self, filepath: &PathBuf) -> Result<&Vec<Token>, String> {
+        let file = std::fs::File::open(filepath).map_err(|err| err.to_string())?;
+        let mut reader = BufReader::new(file);
+
         // read_line returns the amount of bytes read and Ok(0) if EOF is reached,
         // so we iterate over all lines until no more bytes were read or reading failed :)
         // This uses an if-let-chain (https://rust-lang.github.io/rfcs/2497-if-let-chains.html),
         // which were added in Rust2024, yay
-        while let Ok(read_bytes) = self.reader.read_line(&mut self.current_line)
+        while let Ok(read_bytes) = reader.read_line(&mut self.current_line)
             && read_bytes > 0
         {
+            self.lex_current_line()?;
             self.current_line_number += 1;
-
-            println!(
-                "{0}: {1}",
-                self.current_line_number,
-                self.current_line.trim_end()
-            );
-
+            // Need to clear the line since the BufReader appends read lines
             self.current_line.clear();
         }
+        Ok(&self.tokens)
+    }
 
-        Err("Lol nope".to_string())
+    /// Lex a (multiline) string.
+    ///
+    /// # Errors
+    ///
+    /// If lexing fails, duh
+    pub fn lex_string(&mut self, string: &str) -> Result<&Vec<Token>, String> {
+        let lines = string.lines();
+
+        for line in lines {
+            self.current_line = line.to_string();
+            self.lex_current_line()?;
+            self.current_line_number += 1;
+        }
+
+        Ok(&self.tokens)
+    }
+
+    fn lex_current_line(&self) -> Result<(), String> {
+        if !self.current_line.is_ascii() {
+            return Err(format!(
+                "Non-ascii characters found on line {0}: {1}",
+                self.current_line_number, self.current_line
+            ));
+        }
+        println!(
+            "{0}: {1}",
+            self.current_line_number,
+            self.current_line.trim_end()
+        );
+
+        Ok(())
     }
 }
 
+impl Default for Lexer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
