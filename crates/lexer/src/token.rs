@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     /// Any identifier (name)
     Identifier(String),
@@ -11,7 +12,10 @@ pub enum Token {
     /// Keyword: *return*
     Return,
 
-    // Parenthesis
+    // Punctuation
+    /// Semicolon *;*
+    Semicolon,
+
     /// Left Parenthesis *(*
     LPar,
     /// Right parenthesis *)*
@@ -20,9 +24,4 @@ pub enum Token {
     LBrace,
     /// Right brace *}*
     RBrace,
-
-    // Punctuation
-    /// Semicolon *;*
-    Semicolon,
 }
-
